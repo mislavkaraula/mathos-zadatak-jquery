@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+	<meta charset = "UTF-8">
+	<title>Upsert or delete users</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+	<link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/black-tie/jquery-ui.css">
+
+	
+	<style>
+		<!-- CSS za 'sortable' korisnika -->
+		#useri { list-style-type: none; margin: 0; padding: 0; width: 60%; }
+		#useri li { margin: 0 3px 3px 3px; padding: 0.4em; padding-left: 1.5em; font-size: 1.4em; height: 18px; }
+		#useri li span { position: absolute; margin-left: -1.3em; }
+	</style>
+	
+</head>
+
+<body>
+
+<div class="container">
+	<table class="table table-striped table-hover">
+		<ul>
+			<thead>
+			<tr>
+				<th>Ime</th>
+				<th>Prezime</th>
+				<th>Akcije</th>
+			</tr>
+			</thead>
+			<tbody id="useri">
+			
+			</tbody>
+		</ul>
+	</table>
+
+	<button class="btn btn-success" id="addNew">Add new user</button>
+	
+	<div id="dialog1">
+		<h4>Dodaj novog korisnika</h4> <br/>
+		<form>
+			<input type="hidden" name="user" value="4">
+			
+			<div class="form-group">
+				<label for="ime">Ime</label>
+				<input type="text" class="form-control" id="ime1" name="name" placeholder="Unesi ime korisnika">
+			</div>
+			<div class="form-group">
+				<label for="prezime">Prezime</label>
+				<input type="text" class="form-control" id="prezime1" name="surname" placeholder="Unesi prezime korisnika">
+			</div>
+		</form>
+	</div>
+	
+	<div id="dialog2">
+		<h4>Editiraj korisnika</h4> <br/>
+		<form>
+			<input type="hidden" name="user" value="4">
+			
+			<div class="form-group">
+				<label for="ime">Ime</label>
+				<input type="text" class="form-control" id="ime2" name="name" placeholder="Unesi ime korisnika">
+			</div>
+			<div class="form-group">
+				<label for="prezime">Prezime</label>
+				<input type="text" class="form-control" id="prezime2" name="surname" placeholder="Unesi prezime korisnika">
+			</div>
+		</form>
+	</div>
+
+</div>
+
+
+
+<script src = "http://code.jquery.com/jquery-1.11.3.js"></script>
+<script src = "http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+
+<script>
+	$(document).ready(function () {
+		var API = 'http://193.246.33.24/data';
+		var users = $("#useri")
+		
+		$.get(API, {user: 4}, function(data) {
+			$.each(data, function(i, obj) {
+				addUser(obj);
+			});
+		});
+			
+		<!-- Dijalog za dodavanje korisnika -->
+		var dialog1 = $("#dialog1").dialog({
+			autoOpen:false,
+			modal:true,
+			buttons: {
+				'Dodaj novog': function() {
+					form1.submit();
+				},
+				Cancel: function() {
+					dialog1.dialog('close');
+				}
+			},
+			close: function() {
+				form1[0].reset();
+			}
+		});
+		var form1 = dialog1.find("form");
+		form1.on('submit', function(e) {
+			e.preventDefault();
+			
+			$.post(API + '/create', form1.serialize()).done(function (data) {
+				addUser(data);
+				dialog1.dialog('close');
+			}).fail(function(error) {
+				console.log(error.responseText);
+			});
+		});
+		
+		$("#addNew").click(function() {
+			dialog1.dialog("open");
+		});
+		
+		<!-- Akcija za brisanje korisnika -->
+		users.on('click', '.delete', function() {
+			var row = $(this).closest('tr');
+			$.post(API + '/destroy/' + row.data('id'), {}, function(data) {
+				row.remove();
+			});
+		});
+		
+		
+		<!-- Dijalog za editiranje korisnika -->
+		var row;
+		users.on('click', '.edit', function() {
+			row = $(this).closest('tr');
+			$.get(API + '/?id=' + row.data('id'), {}, function(data) {
+				dialog2.dialog("open");
+				$("#ime2").val(data.name);
+				$("#prezime2").val(data.surname);
+			});
+		});
+		
+		var dialog2 = $("#dialog2").dialog({
+			autoOpen:false,
+			modal:true,
+			buttons: {
+				'Spremi izmjene': function() {
+					form2.submit();
+				},
+				Cancel: function() {
+					dialog2.dialog('close');
+				}
+			},
+			close: function() {
+				form2[0].reset();
+			}
+		});
+		var form2 = dialog2.find("form");
+		form2.on('submit', function(e) {
+			e.preventDefault();
+			
+			$.post(API + '/update/' + row.data('id') + '/', form2.serialize()).done(function (data) {
+				row.html('<td>' + data.name + '</td><td>' + data.surname + '</td><td><button class="btn btn-primary edit">Edit</button> <button class="btn btn-danger delete">Delete</button></td>');
+				dialog2.dialog('close');
+			}).fail(function(error) {
+				console.log(error.responseText);
+			});
+		});
+		
+		<!-- Funkcija za appendanje korisnika u listu -->
+		function addUser(usr) {
+			users.append('<tr data-id="' + usr.id + '""><td>' + usr.name + '</td><td>' + usr.surname + '</td><td><button class="btn btn-primary edit">Edit</button> <button class="btn btn-danger delete">Delete</button></td></tr>');
+		}
+		
+		<!-- Ukljucivanje sortable-a na listi korisnika -->
+		$(function() {
+			$( "#useri" ).sortable();
+			$( "#useri" ).disableSelection();
+		});
+  
+	});
+	
+</script>
+
+
+</body>
+
+</html>
